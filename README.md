@@ -13,7 +13,7 @@ Modifier les paramètres de connexion à la base de données dans le fichier con
 - Ajouter des liens pour les acteurs et réalisateurs dans les détails des films.
 - Optimiser le site pour être le plus économe possible en ressources.
 
-
+[cinetech.one.fr](https://cinetech.one)
 -"Juste une question : pourquoi achetez-vous des allumettes pour faire des maquettes ?"
 -"Pour les maquettes, bien sûr !"
 -"Non, mais les allumettes brûlées..."
