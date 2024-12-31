@@ -1,0 +1,9 @@
+body {
+    background: url("../img/film-background.jpg") no-repeat center center fixed;
+    background-size: cover;
+}
+
+.row {
+    background-color: #D8D8D8;
+}
+
