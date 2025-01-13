@@ -1,5 +1,27 @@
 <?php
 // Site parameters
+
+//Column and search field
+$columns = [
+    "TitreVF" => "Titre VF",
+    "TitreVO" => "Titre VO",
+    "Genre" => "Genre",
+    "Acteurs" => "Acteurs",
+    "Realisateurs" => "Realisateurs",
+    "Annee" => "Année",
+    "Duree" => "Durée",
+    "Commentaires" => "Commentaires",
+    "Bonus" => "Bonus",
+    "Reference" => "Référence",
+    "Note" => "Note",
+    "EntreeDate" => "EntreeDate",
+    "FilmVu" => "FilmVu",
+    "BAChemin" => "BAChemin",
+    "BAType" => "BAType",
+    "Support" => "Support",
+    "Synopsis" => "Synopsis"
+];
+
 // --- Header ---
 $window_title = "Filmotech";
 $show_title = false;
