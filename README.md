@@ -1,6 +1,6 @@
 # Cinetech
 
-Filmotech est un projet qui utilise Tailwind CSS pour créer une interface utilisateur moderne et réactive. Ce projet vise à fournir une plateforme pour gérer et explorer une collection de films à l'aide du logiciel Filmotech ([www.filmotech.fr](https://www.filmotech.fr)).
+Filmotech est un projet qui vise à fournir une plateforme pour gérer et explorer une collection de films à l'aide du logiciel Filmotech ([www.filmotech.fr](https://www.filmotech.fr)).
 
 ## Utilisation
 
@@ -10,7 +10,6 @@ Modifier les paramètres de connexion à la base de données dans le fichier con
 
 ## A faire
 
-- Ajouter une gestion des écrans.
 - Ajouter des liens pour les acteurs et réalisateurs dans les détails des films.
 - Optimiser le site pour être le plus économe possible en ressources.
 
