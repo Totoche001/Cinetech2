@@ -1,4 +1,2 @@
 .htaccess
 .htpasswd
-include/config.inc.php
-include/params.inc.php

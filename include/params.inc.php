@@ -19,8 +19,7 @@ $columns = [
     "BAChemin" => "BAChemin",
     "BAType" => "BAType",
     "Support" => "Support",
-    "Synopsis" => "Synopsis",
-	"PretEnCours" => "PretEnCours"
+    "Synopsis" => "Synopsis"
 ];
 
 // --- Header ---
@@ -93,9 +92,8 @@ $show_favorites_index = true;
 $show_favorites_detail = true;
 $favorites_label = "Mes liens";
 $favorites = array(
-	"Allocine" => "http://www.allocine.fr",
-	"IMDB" => "http://www.imdb.com"
-
+	"Allocine" => "https://www.allocine.fr",
+	"IMDB" => "https://www.imdb.com"
 );
 
 // Personal code #1
@@ -116,9 +114,9 @@ $media_informations = "Informations support";
 
 // --- Footer ---
 $powered_by = "Propulsé par";
-$copyright = "©   2024 à " . date("Y");
-$mail_label = "Your Name";
-$mail_address = "mailaddress";
+$copyright = "©" . date("Y");
+$mail_label = "your name";
+$mail_address = "your mail address";
 
 // --- Footer ---
 $show_update_date = true;

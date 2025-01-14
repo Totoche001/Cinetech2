@@ -1,12 +1,12 @@
 <?php
 	class CONFIG {
-		public $DB_TYPE = 'mysql';
-		public $DB_SERVER = 'localhost';
-		public $DB_USER = 'user';
-		public $DB_PASSWORD = 'mypass';
-		public $DB_NAME = 'Name_database';
-		public $DB_TABLE = 'fmt_films';
-		public $API_ACCESS_CODE = '';
+		public $DB_TYPE = 'mysql';					// mysql or sqlite
+		public $DB_SERVER = 'localhost';			// localhost or IP address
+		public $DB_USER = 'user';					// user name
+		public $DB_PASSWORD = 'mypass';				// password
+		public $DB_NAME = 'Name_database';			// name of database
+		public $DB_TABLE = 'fmt_films';				// name of table
+		public $API_ACCESS_CODE = '';				// password to access at server
 		public $API_VERSION = '2';
 		public $POSTERS_DIRECTORY = 'affiche';
 	}
