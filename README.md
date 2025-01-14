@@ -4,8 +4,6 @@ Filmotech est un projet qui vise à fournir une plateforme pour gérer et explor
 
 ## Utilisation
 
-Renommer les fichier config.inc.txt et params.inc.txt en config.inc.php et params.inc.php dans le dossier include.
-
 Modifier les paramètres de connexion à la base de données dans le fichier config.inc.php.
 
 ## A faire
