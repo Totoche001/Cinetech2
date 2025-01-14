@@ -11,6 +11,7 @@
 // Site parameters
 require_once("include/params.inc.php");
 require_once("include/config.inc.php");
+require_once("include/search_column.php");
 
 // Select Movie ID
 $id = isset($_GET['id']) ? $_GET['id'] : -1;
@@ -31,7 +32,7 @@ function add_br($string)
 <html>
 
 <head>
-	<?php include("include/head.php"); ?>
+<?php include("include/head.php"); ?>
 	<!-- Bootstrap CSS -->
 </head>
 
@@ -46,29 +47,11 @@ function add_br($string)
 		<?php include("include/time.php"); ?>
 
 		<!-- Navigation bar -->
-		<nav class="navbar navbar-expand-lg navbar-light bg-light">
-			<div class="container-fluid">
-				<a class="navbar-brand" href="index.php">
-					<img src="img/favicon.png" alt="Filmotech" style="height: 30px;">
-					<span class="ms-2">Filmotech</span>
-				</a>
-				<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-					<span class="navbar-toggler-icon"></span>
-				</button>
-				<div class="collapse navbar-collapse" id="navbarNav">
-					<ul class="navbar-nav">
-						<li class="nav-item">
-							<a class="nav-link active" href="#"><?php echo ($navbar_detail_title); ?></a>
-						</li>
-					</ul>
-
-				</div>
-			</div>
-		</nav>
+<?php include("include/menu.php"); ?>
 	</div>
 
 	<!-- Main Content -->
-	<div class="container" style="background-color: #d3d3d3; padding: 20px; border-radius: 10px;">
+	<div class="container" style="background-color: #d3d3d3; margin-top: 20px; padding-top: 5px;padding-bottom: 5px;margin-bottom: 20px;">
 		<div class="row">
 			<div class="col-md-8">
 				<!-- Main Content -->
@@ -82,10 +65,10 @@ function add_br($string)
 								$filename = sprintf('%s/Filmotech_%05d.jpg', $cfg->POSTERS_DIRECTORY, $data['ID']);
 								if (file_exists($filename)): ?>
 									<a href="<?php echo $filename; ?>" target="_blank">
-										<img src="<?php echo $filename; ?>" alt="Affiche" class="img-fluid rounded">
+										<img src="<?php echo $filename; ?>" alt="Affiche" class="img-fluid rounded" style="width: 100%; height: auto;">
 									</a>
 								<?php else: ?>
-									<img src="img/0rien.jpg" alt="Affiche" class="img-fluid rounded">
+									<img src="img/0rien.jpg" alt="Affiche" class="img-fluid rounded" style="width: 100%; height: auto;">
 								<?php endif; ?>
 							</div>
 
@@ -125,7 +108,7 @@ function add_br($string)
 										<?php echo $data['Pays']; ?>
 									</button>
 								</form>
-								<span class="text-muted">Attention, pas encore de pagination pour ce genre de recherche</span>
+								
 
 								<div class="mb-3">
 									<strong>Note : </strong>
@@ -280,7 +263,7 @@ function add_br($string)
 
 	</div>
 	<!-- Footer -->
-	<?php include 'footer.php'; ?>
+	<?php include 'include/footer.php'; ?>
 
 </body>
 
