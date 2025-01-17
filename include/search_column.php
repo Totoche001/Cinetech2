@@ -16,29 +16,28 @@ $offset = ($page - 1) * $nb_record_per_page;
 $pagination = $paginate && $total_record > $nb_record_per_page;
 
 if (!empty($_POST['search_query'])) {
-    $search_query = htmlspecialchars($_POST['search_query']);
-    $search_field = htmlspecialchars($_POST['search_field']);
+    $search_query = htmlspecialchars($_POST['search_query'], ENT_QUOTES, 'UTF-8');
+    $search_field = htmlspecialchars($_POST['search_field'], ENT_QUOTES, 'UTF-8');
     $search_label = $columns[$search_field];
 
     try {
         $columns_list = implode(", ", array_keys($columns));
+        $search_query_escaped = html_entity_decode($search_query, ENT_QUOTES, 'UTF-8');
         $stmt = $db->prepare("SELECT ID, $columns_list
         FROM {$cfg->DB_TABLE} 
         WHERE $search_field LIKE :search_query 
-        ORDER BY TitreVF LIMIT :limit OFFSET :offset");
-        $stmt->bindValue(':limit', $nb_record_per_page, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-        $stmt->bindValue(':search_query', "%$search_query%", PDO::PARAM_STR);
+        ORDER BY TitreVF");
+        $stmt->bindValue(':search_query', "%$search_query_escaped%", PDO::PARAM_STR);
         $stmt->execute();
 
         $count = $db->prepare("SELECT COUNT(*) 
         FROM {$cfg->DB_TABLE} 
         WHERE $search_field LIKE :search_query");
-        $count->bindValue(':search_query', "%$search_query%", PDO::PARAM_STR);
+        $count->bindValue(':search_query', "%$search_query_escaped%", PDO::PARAM_STR);
         $count->execute();
         $total_record = $count->fetchColumn();
         $count = $total_record;
-        $pagination = $total_record > $nb_record_per_page;
+        $pagination = false;
     } catch (PDOException $e) {
         error_log("Database error: " . $e->getMessage());
         $count = 0;
@@ -58,8 +57,8 @@ if (!empty($_POST['search_query'])) {
     $stmt->execute();
     $count = $paginate ? $total_record : $total_record;
 }
-$response = $stmt->fetchAll();
 
+$response = $stmt->fetchAll();
 $label_movie_count = sprintf($movie_count_paginate, $offset + 1, min($offset + $nb_record_per_page, $total_record), $total_record);
 
 function column_format($field, $value)

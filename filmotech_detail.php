@@ -28,18 +28,16 @@ function add_br($string)
 	return nl2br($string);
 }
 ?>
-
-<html>
-
+<html lang="fr">
 <head>
-<?php include("include/head.php"); ?>
+	<?php include("include/head.php"); ?>
 	<!-- Bootstrap CSS -->
 </head>
 
 <!-- Header -->
 
 <body>
-<?php include("include/header.php"); ?>
+	<?php include("include/header.php"); ?>
 
 	<!-- Main block -->
 
@@ -47,7 +45,7 @@ function add_br($string)
 		<?php include("include/time.php"); ?>
 
 		<!-- Navigation bar -->
-<?php include("include/menu.php"); ?>
+		<?php include("include/menu.php"); ?>
 	</div>
 
 	<!-- Main Content -->
@@ -72,7 +70,6 @@ function add_br($string)
 								<?php endif; ?>
 							</div>
 
-							<!-- Movie Information -->
 							<div class="col-md-8">
 								<h2 class="text-primary">
 									<?php echo $data['TitreVF']; ?>
@@ -108,7 +105,7 @@ function add_br($string)
 										<?php echo $data['Pays']; ?>
 									</button>
 								</form>
-								
+
 
 								<div class="mb-3">
 									<strong>Note : </strong>
@@ -264,7 +261,7 @@ function add_br($string)
 	</div>
 	<!-- Footer -->
 	<?php include 'include/footer.php'; ?>
-
+	<script src="js/bootstrap.bundle.min.js"></script>
 </body>
 
 

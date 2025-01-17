@@ -114,7 +114,14 @@ $media_informations = "Informations support";
 
 // --- Footer ---
 $powered_by = "Propulsé par";
-$copyright = "©" . date("Y");
+
+// --- Year Website started
+$startYear = 2016;
+$currentYear = date("Y");
+$copyright = "©   $startYear à $currentYear";
+$yearsSinceStart = $currentYear - $startYear;
+//$copyright = "©   2016 à " . date("Y");
+
 $mail_label = "your name";
 $mail_address = "your mail address";
 
