@@ -19,7 +19,9 @@ $columns = [
     "BAChemin" => "BAChemin",
     "BAType" => "BAType",
     "Support" => "Support",
-    "Synopsis" => "Synopsis"
+    "Synopsis" => "Synopsis",
+	"PretEnCours" => "PretEnCours",
+	"Pays" => "Pays"
 ];
 
 // --- Header ---

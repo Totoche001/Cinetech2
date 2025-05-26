@@ -13,6 +13,7 @@
                     <a class="nav-link active" href="#"><?php echo ($navbar_active_title); ?></a>
                 </li>
             </ul>
+            <?php if (!str_contains($_SERVER['PHP_SELF'], 'filmotech_detail.php')): ?>
             <!-- Search bar -->
             <form class="d-flex ms-auto" role="search" method="post">
                 <input type="hidden" name="search_field" value="<?php echo htmlspecialchars($search_field, ENT_QUOTES, 'UTF-8'); ?>">
@@ -30,6 +31,6 @@
                     <?php echo htmlspecialchars($navbar_go, ENT_QUOTES, 'UTF-8'); ?>
                 </button>
             </form>
-        </div>
+            <?php endif; ?>        </div>
     </div>
 </nav>
