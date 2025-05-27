@@ -1,28 +1,43 @@
 <?php
+// Démarre la mise en mémoire tampon de la sortie
 ob_start();
-/*
-			Filmotech publishing API
-			(c) 2013-2023 by Pascal PLUCHON
-			https://www.filmotech.fr
- 	*/
+/**
+ * API de publication Filmotech
+ * 
+ * Cette classe gère l'API de publication pour l'application Filmotech.
+ * Elle permet de gérer les requêtes HTTP, les autorisations, et les interactions avec la base de données.
+ * 
+ * @copyright 2013-2023 Pascal PLUCHON
+ * @link https://www.filmotech.fr
+ * @version 1.0
+ */
 
+
+
+// Inclusion du fichier de configuration
 require_once("../include/config.inc.php");
 
+/**
+ * Classe principale de l'API
+ * 
+ * Cette classe contient toutes les méthodes et propriétés nécessaires
+ * pour gérer les requêtes API, authentifier les utilisateurs,
+ * et retourner les réponses appropriées.
+ */
 class API
 {
+	public $data = ""; // Données à retourner par l'API
+	private $cfg; // Objet de configuration
+	private $db = NULL; // Objet de connexion à la base de données
 
-	public $data = ""; // Data to be returned by the API
-	private $cfg; // Configuration object
-	private $db = NULL; // Database connection object
+	public $_allow = array(); // Méthodes ou actions autorisées
+	public $_content_type = "application/json"; // Type de contenu pour les réponses de l'API
+	public $_request = array(); // Données de la requête reçue
 
-	public $_allow = array(); // Allowed methods or actions
-	public $_content_type = "application/json"; // Content type for API responses
-	public $_request = array(); // Request data
+	//private $_method = ""; // Méthode HTTP utilisée pour la requête (commentée car non utilisée)
+	private $_code = 200; // Code de statut HTTP pour la réponse
 
-	//private $_method = ""; // HTTP method used for the request
-	private $_code = 200; // HTTP status code for the response
-
-	// List of allowed methods for the API
+	// Liste des services/méthodes autorisés pour l'API
 	private $services = array(
 		"check_server",
 		"check_code",
@@ -34,200 +49,214 @@ class API
 		"publish"
 	);
 
-	// Constructor: initializes input, configuration, and database connection
+	// Constructeur : initialise les entrées, la configuration et la connexion à la base de données
 	public function __construct()
 	{
-		$this->inputs();					// Clean up input data
-		$this->cfg = new CONFIG(); 			// Init database parameters
-		$this->dbConnect();					// Initiate Database connection
+		$this->inputs();					// Nettoie et prépare les données d'entrée
+		$this->cfg = new CONFIG(); 			// Initialise les paramètres de configuration de la base de données
+		$this->dbConnect();					// Établit la connexion à la base de données
 	}
 
-	// Return status code message
+	// Retourne le message correspondant au code de statut HTTP actuel
 	public function get_status_message()
 	{
-		// Array of HTTP status codes and their corresponding messages
+		// Tableau associatif des codes de statut HTTP et leurs messages correspondants
 		$status = array(
-			100 => 'Continue',
-			101 => 'Switching Protocols',
-			200 => 'OK',
-			201 => 'Created',
-			202 => 'Accepted',
-			203 => 'Non-Authoritative Information',
-			204 => 'No Content',
-			205 => 'Reset Content',
-			206 => 'Partial Content',
-			300 => 'Multiple Choices',
-			301 => 'Moved Permanently',
-			302 => 'Found',
-			303 => 'See Other',
-			304 => 'Not Modified',
-			305 => 'Use Proxy',
-			306 => '(Unused)',
-			307 => 'Temporary Redirect',
-			400 => 'Bad Request',
-			401 => 'Unauthorized',
-			402 => 'Payment Required',
-			403 => 'Forbidden',
-			404 => 'Not Found',
-			405 => 'Method Not Allowed',
-			406 => 'Not Acceptable',
-			407 => 'Proxy Authentication Required',
-			408 => 'Request Timeout',
-			409 => 'Conflict',
-			410 => 'Gone',
-			411 => 'Length Required',
-			412 => 'Precondition Failed',
-			413 => 'Request Entity Too Large',
-			414 => 'Request-URI Too Long',
-			415 => 'Unsupported Media Type',
-			416 => 'Requested Range Not Satisfiable',
-			417 => 'Expectation Failed',
-			500 => 'Internal Server Error',
-			501 => 'Not Implemented',
-			502 => 'Bad Gateway',
-			503 => 'Service Unavailable',
-			504 => 'Gateway Timeout',
-			505 => 'HTTP Version Not Supported'
+			100 => 'Continue', // La requête a été reçue, le client peut continuer
+			101 => 'Switching Protocols', // Le serveur change de protocole selon la demande du client
+			200 => 'OK', // La requête a réussi
+			201 => 'Created', // Une nouvelle ressource a été créée avec succès
+			202 => 'Accepted', // La requête a été acceptée mais pas encore traitée
+			203 => 'Non-Authoritative Information', // Informations retournées provenant d'une source tierce
+			204 => 'No Content', // La requête a réussi mais il n'y a pas de contenu à retourner
+			205 => 'Reset Content', // La requête a réussi, le client doit réinitialiser la vue
+			206 => 'Partial Content', // Le serveur retourne une partie seulement du contenu demandé
+			300 => 'Multiple Choices', // Plusieurs options pour la ressource demandée
+			301 => 'Moved Permanently', // La ressource a été déplacée de façon permanente
+			302 => 'Found', // La ressource a été trouvée à une autre URI temporairement
+			303 => 'See Other', // Voir une autre URI pour la réponse
+			304 => 'Not Modified', // La ressource n'a pas été modifiée depuis la dernière requête
+			305 => 'Use Proxy', // La ressource doit être accédée via un proxy
+			306 => '(Unused)', // Code réservé, non utilisé
+			307 => 'Temporary Redirect', // Redirection temporaire vers une autre URI
+			400 => 'Bad Request', // La requête est mal formée ou invalide
+			401 => 'Unauthorized', // Authentification requise ou échouée
+			402 => 'Payment Required', // Réservé pour un usage futur
+			403 => 'Forbidden', // Accès refusé à la ressource
+			404 => 'Not Found', // Ressource non trouvée
+			405 => 'Method Not Allowed', // Méthode HTTP non autorisée pour cette ressource
+			406 => 'Not Acceptable', // Le contenu demandé n'est pas disponible dans un format acceptable
+			407 => 'Proxy Authentication Required', // Authentification requise via un proxy
+			408 => 'Request Timeout', // Le serveur a expiré en attendant la requête
+			409 => 'Conflict', // Conflit avec l'état actuel de la ressource
+			410 => 'Gone', // La ressource n'est plus disponible et ne le sera plus
+			411 => 'Length Required', // La requête nécessite un en-tête Content-Length
+			412 => 'Precondition Failed', // Une condition préalable donnée dans les en-têtes a échoué
+			413 => 'Request Entity Too Large', // La requête est trop volumineuse pour être traitée
+			414 => 'Request-URI Too Long', // L'URI de la requête est trop longue
+			415 => 'Unsupported Media Type', // Le type de média de la requête n'est pas supporté
+			416 => 'Requested Range Not Satisfiable', // La plage demandée n'est pas disponible
+			417 => 'Expectation Failed', // L'attente indiquée dans l'en-tête Expect ne peut être satisfaite
+			500 => 'Internal Server Error', // Erreur interne du serveur
+			501 => 'Not Implemented', // Fonctionnalité non implémentée sur le serveur
+			502 => 'Bad Gateway', // Mauvaise passerelle ou réponse invalide du serveur en amont
+			503 => 'Service Unavailable', // Service temporairement indisponible
+			504 => 'Gateway Timeout', // Délai d'attente dépassé par la passerelle
+			505 => 'HTTP Version Not Supported' // Version HTTP non supportée par le serveur
 		);
-		// Return the message corresponding to the current status code, or 500 if not found
+		// Retourne le message correspondant au code de statut actuel, ou 'Internal Server Error' si le code est inconnu
 		return ($status[$this->_code]) ? $status[$this->_code] : $status[500];
 	}
-
-	// Clean up input data based on the HTTP request method
+	// Nettoie les données d'entrée en fonction de la méthode HTTP utilisée
 	private function inputs()
 	{
+		// Récupère la méthode HTTP de la requête (GET, POST, PUT, DELETE, etc.)
 		switch ($this->get_request_method()) {
 			case "POST":
-				// Decode JSON input for POST requests and clean it
+				// Pour les requêtes POST, récupère le contenu JSON brut envoyé dans le corps de la requête
+				// puis décode ce JSON en tableau associatif PHP
+				// Ensuite, nettoie récursivement les données pour éviter les injections ou balises HTML
 				$data = json_decode(file_get_contents('php://input'), true);
 				$this->_request = $this->cleanInputs($data);
 				break;
 			case "GET":
-				// Clean GET parameters
+				// Pour les requêtes GET, nettoie les paramètres passés dans l'URL ($_GET)
 				$this->_request = $this->cleanInputs($_GET);
 				break;
 			case "DELETE":
-				// Clean GET parameters for DELETE requests as well
+				// Pour les requêtes DELETE, utilise également les paramètres GET pour récupérer les données
+				// puis nettoie ces données
 				$this->_request = $this->cleanInputs($_GET);
 				break;
 			case "PUT":
-				// Parse and clean input data for PUT requests
+				// Pour les requêtes PUT, lit le contenu brut envoyé dans le corps de la requête
+				// puis le parse en variables PHP via parse_str
+				// Enfin, nettoie récursivement les données obtenues
 				parse_str(file_get_contents("php://input"), $this->_request);
 				$this->_request = $this->cleanInputs($this->_request);
 				break;
 			default:
-				// Respond with 406 Not Acceptable for unsupported methods
+				// Pour toute autre méthode HTTP non supportée, renvoie une réponse HTTP 406 Not Acceptable
 				$this->response('', 406);
 				break;
 		}
 	}
 
+	// Fonction récursive pour nettoyer les données d'entrée
+	// Elle supprime toutes les balises HTML et espaces superflus
 	private function cleanInputs(mixed $data): array|string
 	{
-		// Initialize an empty array to hold cleaned input data
+		// Initialise un tableau vide pour stocker les données nettoyées
 		$clean_input = [];
 
-		// If the input data is an array, recursively clean each element
+		// Si les données sont un tableau, applique la fonction récursivement à chaque élément
 		if (is_array($data)) {
 			foreach ($data as $k => $v) {
 				$clean_input[$k] = $this->cleanInputs($v);
 			}
 		} else {
-			// If the input is a string or other type, strip HTML tags and trim whitespace
+			// Sinon, pour une donnée simple (string, int, etc.), convertit en chaîne,
+			// supprime toutes les balises HTML avec strip_tags,
+			// puis supprime les espaces en début et fin de chaîne avec trim
 			$data = strip_tags((string)$data);
 			$clean_input = trim($data);
 		}
 
-		// Return the cleaned input data
+		// Retourne les données nettoyées, soit sous forme de tableau, soit de chaîne
 		return $clean_input;
 	}
 
-	// Get the HTTP request method (GET, POST, PUT, DELETE, etc.)
+	// Récupère la méthode HTTP utilisée pour la requête courante
 	public function get_request_method()
 	{
+		// Accède à la variable serveur $_SERVER pour obtenir la méthode HTTP (ex: GET, POST)
 		return $_SERVER['REQUEST_METHOD'];
 	}
-
-	// Send a JSON response with the given data and HTTP status code
+	// Envoie une réponse JSON avec les données fournies et le code HTTP spécifié
 	public function response($data, $status)
 	{
-		// Set the HTTP status code, default to 200 if none provided
+		// Définit le code de statut HTTP à utiliser dans la réponse ; par défaut 200 (OK) si aucun code fourni
 		$this->_code = ($status) ? $status : 200;
-		// Set the HTTP headers for the response
+		// Configure les en-têtes HTTP de la réponse, notamment le code de statut et le type de contenu
 		$this->set_headers();
-		// Output the response data
+		// Affiche les données de la réponse (généralement une chaîne JSON)
 		echo $data;
-		// Terminate the script execution
+		// Termine l'exécution du script immédiatement après l'envoi de la réponse
 		exit;
 	}
 
-	// Set HTTP headers for the response, including status code and content type
+	// Configure les en-têtes HTTP pour la réponse
 	private function set_headers(): void
 	{
+		// Définit le code de statut HTTP de la réponse (ex: 200, 404, 500, etc.)
 		http_response_code($this->_code);
+		// Définit l'en-tête Content-Type avec le type de contenu et l'encodage UTF-8
 		header("Content-Type: {$this->_content_type}; charset=utf-8");
 	}
 
-	// Check the security code (API_ACCESS_CODE) and the access method (POST)
+	// Vérifie la validité du code de sécurité (API_ACCESS_CODE) et la méthode d'accès (POST)
 	private function check_code(): void
 	{
-		// Verify that the request method is POST
+		// Vérifie que la méthode HTTP utilisée est bien POST
 		if ($this->get_request_method() !== "POST") {
-			// If not POST, return error code 100 with 401 Unauthorized status
+			// Si la méthode n'est pas POST, prépare un tableau d'erreur avec le code 100
 			$error = ['error_code' => "100"];
+			// Envoie une réponse JSON avec le message d'erreur et le code HTTP 401 (Non autorisé)
 			$this->response(json_encode($error), 401);
 		}
 
-		// Check if the 'code' parameter is present in the request
+		// Vérifie que le paramètre 'code' est présent dans la requête
 		if (empty($this->_request['code'])) {
-			// If 'code' is missing, return error code 101 with 401 Unauthorized status
+			// Si le paramètre 'code' est absent ou vide, prépare un tableau d'erreur avec le code 101
 			$error = ['error_code' => "101"];
+			// Envoie une réponse JSON avec le message d'erreur et le code HTTP 401 (Non autorisé)
 			$this->response(json_encode($error), 401);
 		}
 
-		// Retrieve the provided code from the request
+		// Récupère la valeur du code fourni dans la requête
 		$code = $this->_request['code'];
-		// Compare the provided code with the configured API access code
+		// Compare le code fourni avec le code d'accès API configuré
 		if ($code !== $this->cfg->API_ACCESS_CODE) {
-			// If codes do not match, return error code 102 with 401 Unauthorized status
+			// Si les codes ne correspondent pas, prépare un tableau d'erreur avec le code 102
 			$error = ['error_code' => "102"];
+			// Envoie une réponse JSON avec le message d'erreur et le code HTTP 401 (Non autorisé)
 			$this->response(json_encode($error), 401);
 		}
 	}
-
-	// Database connection
+	// Connexion à la base de données
 	private function dbConnect(): void
 	{
 		try {
-			// Définition des options PDO pour la gestion des erreurs et le mode de récupération des données
+			// Définition des options PDO pour gérer les erreurs et le mode de récupération des données
 			$options = [
-				PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, // Active les exceptions en cas d'erreur PDO
-				PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, // Les résultats seront récupérés sous forme de tableau associatif
-				PDO::ATTR_EMULATE_PREPARES => false // Désactive l'émulation des requêtes préparées pour utiliser les vraies requêtes préparées du SGBD
+				PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, // Active les exceptions en cas d'erreur PDO pour faciliter le débogage
+				PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, // Les résultats des requêtes seront retournés sous forme de tableaux associatifs
+				PDO::ATTR_EMULATE_PREPARES => false // Désactive l'émulation des requêtes préparées pour utiliser les vraies requêtes préparées du SGBD, améliorant la sécurité et la performance
 			];
 
 			// Vérifie si le type de base de données configuré est SQLite
 			if ($this->cfg->DB_TYPE === 'sqlite') {
-				// Connexion à une base SQLite en spécifiant le chemin du fichier .sqlite3
+				// Connexion à une base SQLite en spécifiant le chemin vers le fichier .sqlite3
+				// Le chemin est relatif au dossier parent du script courant
 				$this->db = new PDO(
-					'sqlite:../' . $this->cfg->DB_NAME . '.sqlite3', // Chemin vers le fichier SQLite
-					null, // Pas d'utilisateur pour SQLite
-					null, // Pas de mot de passe pour SQLite
-					$options // Options PDO définies précédemment
+					'sqlite:../' . $this->cfg->DB_NAME . '.sqlite3', // DSN SQLite avec chemin du fichier de base de données
+					null, // Pas d'utilisateur requis pour SQLite
+					null, // Pas de mot de passe requis pour SQLite
+					$options // Options PDO définies ci-dessus
 				);
 			} else {
-				// Sinon, connexion à une base MySQL avec les paramètres fournis
+				// Sinon, connexion à une base MySQL avec les paramètres fournis dans la configuration
 				$this->db = new PDO(
-					"mysql:host={$this->cfg->DB_SERVER};dbname={$this->cfg->DB_NAME};charset=utf8mb4", // DSN MySQL avec hôte, nom de la base et encodage UTF-8
-					$this->cfg->DB_USER, // Nom d'utilisateur MySQL
-					$this->cfg->DB_PASSWORD, // Mot de passe MySQL
-					$options // Options PDO définies précédemment
+					"mysql:host={$this->cfg->DB_SERVER};dbname={$this->cfg->DB_NAME};charset=utf8mb4", // DSN MySQL incluant l'hôte, le nom de la base et le jeu de caractères UTF-8
+					$this->cfg->DB_USER, // Nom d'utilisateur MySQL défini dans la configuration
+					$this->cfg->DB_PASSWORD, // Mot de passe MySQL défini dans la configuration
+					$options // Options PDO définies ci-dessus
 				);
 			}
 		} catch (PDOException $e) {
-			// En cas d'erreur lors de la connexion, capture l'exception PDOException
-			// Prépare un tableau d'erreur avec le message de l'exception
-			$error = ['error_msg' => $e->getMessage()];
+			// En cas d'erreur lors de la tentative de connexion à la base de données
+			// Capture l'exception PDOException pour récupérer le message d'erreur
+			$error = ['error_msg' => $e->getMessage()]; // Prépare un tableau contenant le message d'erreur
 			// Envoie une réponse JSON avec le message d'erreur et le code HTTP 412 (Precondition Failed)
 			$this->response(json_encode($error), 412);
 		}
@@ -235,59 +264,61 @@ class API
 	// Create the MySQL Table
 	private function create_table_mysql()
 	{
-		// SQL statement to create the table if it does not exist
+		// Définition de la requête SQL pour créer la table si elle n'existe pas déjà
+		// La table est nommée selon la configuration $this->cfg->DB_TABLE
 		$sql = 'CREATE TABLE IF NOT EXISTS `' . $this->cfg->DB_TABLE . '` ('
-			. ' `ID` bigint(20) NOT NULL,'
-			. ' `DateHeureMAJ` datetime NOT NULL default \'0000-00-00 00:00:00\','
-			. ' `TitreVF` varchar(255) NOT NULL default \'\','
-			. ' `TitreVO` varchar(255) NOT NULL default \'\','
-			. ' `Genre` varchar(50) NOT NULL default \'\','
-			. ' `Pays` varchar(255) NOT NULL default \'\','
-			. ' `Annee` varchar(10) NOT NULL default \'\','
-			. ' `Duree` int(11) NOT NULL default \'0\','
-			. ' `Note` int(11) NOT NULL default \'0\','
-			. ' `Synopsis` text,'
-			. ' `Acteurs` text,'
-			. ' `Realisateurs` text,'
-			. ' `Commentaires` text,'
-			. ' `Support` varchar(50) NOT NULL default \'\','
-			. ' `NombreSupport` int(11) NOT NULL default \'0\','
-			. ' `Edition` varchar(255) NOT NULL default \'\','
-			. ' `Zone` varchar(10) NOT NULL default \'\','
-			. ' `Langues` varchar(255) NOT NULL default \'\','
-			. ' `SousTitres` varchar(255) NOT NULL default \'\','
-			. ' `Audio` varchar(255) NOT NULL default \'\','
-			. ' `Bonus` text,'
-			. ' `EntreeType` varchar(255) NOT NULL default \'\','
-			. ' `EntreeSource` varchar(255) NOT NULL default \'\','
-			. ' `EntreeDate` date NOT NULL default \'0000-00-00\','
-			. ' `EntreePrix` float NOT NULL default \'0\','
-			. ' `Sortie` varchar(10) NOT NULL default \'\','
-			. ' `SortieType` varchar(255) NOT NULL default \'\','
-			. ' `SortieDestinataire` varchar(255) NOT NULL default \'\','
-			. ' `SortieDate` date NOT NULL default \'0000-00-00\','
-			. ' `SortiePrix` float NOT NULL default \'0\','
-			. ' `PretEnCours` varchar(10) NOT NULL default \'\','
-			. ' `FilmVu` varchar(5) NOT NULL default \'NON\','
-			. ' `Reference` varchar(255) NOT NULL default \'\','
-			. ' `BAChemin` varchar(255) NOT NULL default \'\','
-			. ' `BAType` varchar(10) NOT NULL default \'\','
-			. ' `MediaChemin` varchar(255) NOT NULL default \'\','
-			. ' `MediaType` varchar(10) NOT NULL default \'\','
-			. ' PRIMARY KEY (`ID`),'
-			. ' KEY `TitreVF` (`TitreVF`)'
-			. ' ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci;';
+			. ' `ID` bigint(20) NOT NULL,' // Identifiant unique du film, clé primaire
+			. ' `DateHeureMAJ` datetime NOT NULL default \'0000-00-00 00:00:00\',' // Date et heure de la dernière mise à jour
+			. ' `TitreVF` varchar(255) NOT NULL default \'\',' // Titre en version française
+			. ' `TitreVO` varchar(255) NOT NULL default \'\',' // Titre en version originale
+			. ' `Genre` varchar(50) NOT NULL default \'\',' // Genre du film
+			. ' `Pays` varchar(255) NOT NULL default \'\',' // Pays d'origine
+			. ' `Annee` varchar(10) NOT NULL default \'\',' // Année de sortie
+			. ' `Duree` int(11) NOT NULL default \'0\',' // Durée du film en minutes
+			. ' `Note` int(11) NOT NULL default \'0\',' // Note attribuée au film
+			. ' `Synopsis` text,' // Résumé du film
+			. ' `Acteurs` text,' // Liste des acteurs
+			. ' `Realisateurs` text,' // Liste des réalisateurs
+			. ' `Commentaires` text,' // Commentaires divers
+			. ' `Support` varchar(50) NOT NULL default \'\',' // Type de support (DVD, Blu-ray, etc.)
+			. ' `NombreSupport` int(11) NOT NULL default \'0\',' // Nombre de supports
+			. ' `Edition` varchar(255) NOT NULL default \'\',' // Edition particulière
+			. ' `Zone` varchar(10) NOT NULL default \'\',' // Zone géographique du support
+			. ' `Langues` varchar(255) NOT NULL default \'\',' // Langues disponibles
+			. ' `SousTitres` varchar(255) NOT NULL default \'\',' // Sous-titres disponibles
+			. ' `Audio` varchar(255) NOT NULL default \'\',' // Informations audio
+			. ' `Bonus` text,' // Bonus inclus
+			. ' `EntreeType` varchar(255) NOT NULL default \'\',' // Type d'entrée (achat, cadeau, etc.)
+			. ' `EntreeSource` varchar(255) NOT NULL default \'\',' // Source de l'entrée
+			. ' `EntreeDate` date NOT NULL default \'0000-00-00\',' // Date d'entrée dans la collection
+			. ' `EntreePrix` float NOT NULL default \'0\',' // Prix d'entrée
+			. ' `Sortie` varchar(10) NOT NULL default \'\',' // Sortie (prêt, vente, etc.)
+			. ' `SortieType` varchar(255) NOT NULL default \'\',' // Type de sortie
+			. ' `SortieDestinataire` varchar(255) NOT NULL default \'\',' // Destinataire de la sortie
+			. ' `SortieDate` date NOT NULL default \'0000-00-00\',' // Date de sortie
+			. ' `SortiePrix` float NOT NULL default \'0\',' // Prix de sortie
+			. ' `PretEnCours` varchar(10) NOT NULL default \'\',' // Indique si le film est prêté actuellement
+			. ' `FilmVu` varchar(5) NOT NULL default \'NON\',' // Indique si le film a été vu
+			. ' `Reference` varchar(255) NOT NULL default \'\',' // Référence interne ou externe
+			. ' `BAChemin` varchar(255) NOT NULL default \'\',' // Chemin vers la bande-annonce
+			. ' `BAType` varchar(10) NOT NULL default \'\',' // Type de la bande-annonce
+			. ' `MediaChemin` varchar(255) NOT NULL default \'\',' // Chemin vers le média
+			. ' `MediaType` varchar(10) NOT NULL default \'\',' // Type du média
+			. ' PRIMARY KEY (`ID`),' // Définition de la clé primaire sur la colonne ID
+			. ' KEY `TitreVF` (`TitreVF`)' // Index sur la colonne TitreVF pour accélérer les recherches
+			. ' ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci;'; // Moteur de stockage et encodage
 
 		try {
-			// Execute the SQL query to create the table
+			// Exécution de la requête SQL pour créer la table
 			$this->db->query($sql);
 		} catch (Exception $e) {
-			// Return error response if table creation fails
+			// En cas d'erreur lors de la création de la table, préparation d'un message d'erreur
 			$error = array('error_code' => "200", 'error_msg' => $e->getMessage());
+			// Envoi de la réponse JSON avec le code HTTP 424 (Failed Dependency)
 			$this->response(json_encode($error), 424);
 		}
 
-		// Return success response if table creation succeeds
+		// Si la création s'est bien passée, envoi d'une réponse de succès
 		$success = array('status' => "OK");
 		$this->response(json_encode($success), 200);
 	}
@@ -295,93 +326,101 @@ class API
 	// Create the SQLite database table and index
 	private function create_table_sqlite()
 	{
-		// SQL statement to create the table with appropriate column types and defaults
+		// Définition de la requête SQL pour créer la table SQLite avec les types et valeurs par défaut adaptés
 		$sql =
 			"CREATE TABLE " . $this->cfg->DB_TABLE . " ("
-			. "ID integer NOT NULL PRIMARY KEY,"
-			. "DateHeureMAJ TimeStamp NOT NULL default '0000-00-00 00:00:00',"
-			. "TitreVF varchar(255) NOT NULL default '',"
-			. "TitreVO varchar(255) default '',"
-			. "Genre varchar(50) default '',"
-			. "Pays varchar(255) default '',"
-			. "Annee varchar(10) default '',"
-			. "Duree int(11) default '0',"
-			. "Note int(11) default '0',"
-			. "Synopsis text ,"
-			. "Acteurs text ,"
-			. "Realisateurs text ,"
-			. "Commentaires text ,"
-			. "Support varchar(50) default '',"
-			. "NombreSupport int(11) default '0',"
-			. "Edition varchar(255) default '',"
-			. "Zone varchar(10) default '',"
-			. "Langues varchar(255) default '',"
-			. "SousTitres varchar(255) default '',"
-			. "Audio varchar(255) default '',"
-			. "Bonus text ,"
-			. "EntreeType varchar(255) default '',"
-			. "EntreeSource varchar(255) default '',"
-			. "EntreeDate date default '0000-00-00',"
-			. "EntreePrix float default '0',"
-			. "Sortie varchar(10) default '',"
-			. "SortieType varchar(255) default '',"
-			. "SortieDestinataire varchar(255) default '',"
-			. "SortieDate date default '0000-00-00',"
-			. "SortiePrix float default '0',"
-			. "PretEnCours varchar(10) default '',"
-			. "FilmVu varchar(5) default 'NON',"
-			. "Reference varchar(255) default '',"
-			. "BAChemin varchar(255) default '',"
-			. "BAType varchar(10) default '',"
-			. "MediaChemin varchar(255) default '',"
-			. "MediaType varchar(10) default '');"
-			// Create an index on the TitreVF column for faster searches
+			. "ID integer NOT NULL PRIMARY KEY," // Identifiant unique, clé primaire SQLite
+			. "DateHeureMAJ TimeStamp NOT NULL default '0000-00-00 00:00:00'," // Date et heure de mise à jour
+			. "TitreVF varchar(255) NOT NULL default ''," // Titre en version française
+			. "TitreVO varchar(255) default ''," // Titre en version originale
+			. "Genre varchar(50) default ''," // Genre du film
+			. "Pays varchar(255) default ''," // Pays d'origine
+			. "Annee varchar(10) default ''," // Année de sortie
+			. "Duree int(11) default '0'," // Durée en minutes
+			. "Note int(11) default '0'," // Note attribuée
+			. "Synopsis text ," // Résumé
+			. "Acteurs text ," // Acteurs
+			. "Realisateurs text ," // Réalisateurs
+			. "Commentaires text ," // Commentaires
+			. "Support varchar(50) default ''," // Support
+			. "NombreSupport int(11) default '0'," // Nombre de supports
+			. "Edition varchar(255) default ''," // Edition
+			. "Zone varchar(10) default ''," // Zone
+			. "Langues varchar(255) default ''," // Langues disponibles
+			. "SousTitres varchar(255) default ''," // Sous-titres
+			. "Audio varchar(255) default ''," // Audio
+			. "Bonus text ," // Bonus
+			. "EntreeType varchar(255) default ''," // Type d'entrée
+			. "EntreeSource varchar(255) default ''," // Source d'entrée
+			. "EntreeDate date default '0000-00-00'," // Date d'entrée
+			. "EntreePrix float default '0'," // Prix d'entrée
+			. "Sortie varchar(10) default ''," // Sortie
+			. "SortieType varchar(255) default ''," // Type de sortie
+			. "SortieDestinataire varchar(255) default ''," // Destinataire sortie
+			. "SortieDate date default '0000-00-00'," // Date sortie
+			. "SortiePrix float default '0'," // Prix sortie
+			. "PretEnCours varchar(10) default ''," // Prêt en cours
+			. "FilmVu varchar(5) default 'NON'," // Film vu ou non
+			. "Reference varchar(255) default ''," // Référence
+			. "BAChemin varchar(255) default ''," // Chemin bande-annonce
+			. "BAType varchar(10) default ''," // Type bande-annonce
+			. "MediaChemin varchar(255) default ''," // Chemin média
+			. "MediaType varchar(10) default '');" // Type média
+			// Création d'un index sur la colonne TitreVF pour accélérer les recherches
 			. "CREATE INDEX films_idx ON " . $this->cfg->DB_TABLE . " (TitreVF ASC);";
 
 		try {
-			// Execute the SQL query to create the table and index
+			// Exécution de la requête SQL pour créer la table et l'index
 			$this->db->query($sql);
-			// Return success response if creation succeeds
+			// Envoi d'une réponse JSON indiquant le succès de l'opération
 			$success = array('status' => "OK");
 			$this->response(json_encode($success), 200);
 		} catch (Exception $e) {
-			// On failure, attempt to execute the query again (likely an error)
+			// En cas d'échec, tentative de réexécution de la requête (probablement une erreur)
 			$this->db->query($sql);
-			// Return failure response
+			// Envoi d'une réponse JSON indiquant l'échec de l'opération
 			$success = array('status' => "KO");
 			$this->response(json_encode($success), 200);
 		}
 	}
-
-	// Prepare SQL statement according to db type
+	// Prépare la chaîne de caractères pour une requête SQL en fonction du type de base de données
 	private function sql_escape($field)
 	{
-		// If using SQLite, escape single quotes by doubling them
+		// Si la base de données utilisée est SQLite
 		if ($this->cfg->DB_TYPE == 'sqlite') {
+			// SQLite nécessite que les apostrophes simples soient doublées pour être échappées correctement
 			return str_replace('\'', '\'\'', $field);
 		} else {
-			// For other DB types, use addslashes to escape special characters
+			// Pour les autres types de bases de données (ex : MySQL, PostgreSQL)
+			// Utilisation de addslashes pour échapper les caractères spéciaux comme les apostrophes, guillemets, antislash, etc.
 			return addslashes($field);
 		}
 	}
 
-	// Add a record and the poster (if any)
+	// Ajoute un enregistrement et son affiche (si elle existe) dans la base de données
 	private function add_record()
 	{
+		// Vérifie le code de sécurité avant toute opération
 		$this->check_code();
 
-		// List of fields to insert into the database
+		// Liste des champs à insérer dans la base de données
+		// Chaque champ correspond à une information spécifique du film (titre, genre, durée, etc.)
 		$champs = array("DateHeureMAJ", "TitreVF", "TitreVO", "Genre", "Pays", "Annee", "Duree", "Note", "Synopsis", "Acteurs", "Realisateurs", "Commentaires", "Support", "NombreSupport", "Edition", "Zone", "Langues", "SousTitres", "Audio", "Bonus", "EntreeType", "EntreeSource", "EntreeDate", "EntreePrix", "Sortie", "SortieType", "SortieDestinataire", "SortieDate", "SortiePrix", "PretEnCours", "FilmVu", "Reference", "BAChemin", "BAType", "MediaChemin", "MediaType");
 
-		// Start building the SQL INSERT statement
+		// Commence la construction de la requête SQL INSERT
+		// Ajoute d'abord le nom de la table et l'ID
 		$sql = 'INSERT INTO ' . $this->cfg->DB_TABLE . '(ID';
+
+		// Ajoute tous les noms de champs à la requête
 		foreach ($champs as $value) {
 			$sql .= ', ' . $value;
 		}
 
+		// Commence la partie VALUES de la requête avec l'ID
 		$sql .= ') VALUES(\'' . $this->_request['ID'] . '\'';
 
-		// Add each field value, properly escaped
+		// Ajoute chaque valeur de champ, en s'assurant qu'elle est correctement échappée
+		// pour éviter les injections SQL
 		foreach ($champs as $value) {
 			$sql .= ', \'' . $this->sql_escape($this->_request[$value]) . '\'';
 		}
@@ -389,258 +428,300 @@ class API
 		$sql .= ");";
 
 		try {
-			// Execute the SQL query to add the record
+			// Exécute la requête SQL pour ajouter l'enregistrement
 			$data = $this->db->query($sql);
 		} catch (Exception $e) {
-			// On error, respond with error code and message
+			// En cas d'erreur, renvoie un code d'erreur et le message associé
 			$tableau = array('error_code' => '300', 'error_msg' => $e->getMessage());
 			$this->response(json_encode($tableau), 424);
 		}
-		// Add the poster image if provided
+		// Ajoute l'image de l'affiche si elle est fournie
 		$this->add_poster();
 	}
 
-	// Add a poster image for the record
+	// Ajoute une image d'affiche pour l'enregistrement
 	private function add_poster()
 	{
+		// Vérifie le code de sécurité
 		$this->check_code();
+
+		// Définit le chemin du répertoire des affiches
 		$repertoire_affiches = '../' . $this->cfg->POSTERS_DIRECTORY;
+
+		// Vérifie si une affiche a été fournie dans la requête
 		if (isset($this->_request['Affiche'])) {
-			// Decode the base64 encoded image data
+			// Décode les données de l'image qui sont en base64
 			$affiche = base64_decode($this->_request['Affiche']);
-			// Define the filename for the poster image
+
+			// Crée le nom de fichier pour l'affiche avec un format spécifique
 			$filename = sprintf($repertoire_affiches . '/Filmotech_%05d.jpg', $this->_request['ID']);
-			// Attempt to open the file for writing
+
+			// Tente d'ouvrir le fichier en mode écriture binaire
 			if (!$handle = fopen($filename, 'wb')) {
-				// Respond with error if file cannot be opened
+				// Renvoie une erreur si impossible d'ouvrir le fichier
 				$error = array('error_code' => '301');
 				$this->response(json_encode($error), 424);
 			}
-			// Write the image data to the file
+
+			// Écrit les données de l'image dans le fichier
 			if (fwrite($handle, $affiche) === FALSE) {
-				// Respond with error if writing fails
+				// Renvoie une erreur si l'écriture échoue
 				$error = array('error_code' => '302');
 				$this->response(json_encode($error), 424);
 			}
 			fclose($handle);
-			// Optionally change file permissions if requested
+
+			// Change les permissions du fichier si demandé
 			if (isset($this->_request['forceCHMOD'])) chmod($filename, 0777);
 		}
 	}
 
-	// Empty the poster directory by deleting all poster files
+	// Vide le répertoire des affiches en supprimant tous les fichiers d'affiches
 	private function empty_poster_directory()
 	{
+		// Vérifie le code de sécurité
 		$this->check_code();
 
+		// Définit le chemin du répertoire des affiches
 		$repertoire_affiches = '../' . $this->cfg->POSTERS_DIRECTORY;
-		// Loop through all poster files and delete them
+
+		// Parcourt tous les fichiers d'affiches (*.jpg) et les supprime un par un
 		foreach (glob($repertoire_affiches . '/Filmotech*.jpg') as $filename) {
 			unlink($filename);
 		}
 	}
-
-	// Remove a record and its poster image (if any)
+	// Supprime un enregistrement et son image d'affiche associée (si elle existe)
 	private function del_record()
 	{
+		// Vérifie le code de sécurité avant d'effectuer l'opération
 		$this->check_code();
-		// Build SQL DELETE statement to remove record by ID
+
+		// Construit la requête SQL DELETE pour supprimer l'enregistrement correspondant à l'ID
 		$sql = "DELETE FROM " . $this->cfg->DB_TABLE . " WHERE ID = " . $this->_request['ID'];
 		try {
-			// Execute the delete query
+			// Exécute la requête de suppression dans la base de données
 			$this->db->query($sql);
 		} catch (Exception $e) {
-			// Respond with error if deletion fails
+			// En cas d'erreur lors de la suppression, renvoie un message d'erreur avec le code 424
 			$error = array('error_code' => '500', 'error_msg' => $e->getMessage());
 			$this->response(json_encode($error), 424);
 		}
-		// Define the poster filename associated with the record
+
+		// Définit le chemin complet du fichier d'affiche associé à l'enregistrement
 		$repertoire_affiches = '../' . $this->cfg->POSTERS_DIRECTORY;
 		$filename = sprintf($repertoire_affiches . '/Filmotech_%05d.jpg', $this->_request['ID']);
-		// Delete the poster file if it exists
+
+		// Supprime le fichier d'affiche s'il existe sur le disque
 		if (file_exists($filename)) {
 			unlink($filename);
 		}
 	}
-	// Update the last publishing date (shown in the movie list page)
+
+	// Met à jour la date de dernière publication (affichée dans la page de liste des films)
 	private function update_publishing_date()
 	{
+		// Vérifie le code de sécurité avant d'effectuer l'opération
 		$this->check_code();
+
+		// Définit le chemin du fichier de mise à jour
 		$filename = '../update.txt';
-		// Try to open the file for writing
+
+		// Tente d'ouvrir le fichier en mode écriture
 		if (!$handle = fopen($filename, 'w')) {
-			// Respond with error if file cannot be opened
+			// Si impossible d'ouvrir le fichier, renvoie une erreur avec le code 424
 			$error = array('error_code', '400');
 			$this->response(json_encode($error), 424);
 		}
 
-		// Write the update date to the file
+		// Écrit la nouvelle date de mise à jour dans le fichier
 		if (fwrite($handle, $this->_request['DateMAJ']) === FALSE) {
-			// Respond with error if writing fails
+			// Si l'écriture échoue, renvoie une erreur avec le code 424
 			$error = array('error_code', '401');
 			$this->response(json_encode($error), 424);
 		}
-		// Close the file handle
+
+		// Ferme le fichier après l'écriture
 		fclose($handle);
-		// Respond with success status
+
+		// Renvoie une réponse de succès avec le code 200
 		$success = array('status' => 'OK');
 		$this->response(json_encode($success), 200);
 	}
+	// FONCTIONS DE L'API PUBLIQUE
 
-	// PUBLIC API FUNCTIONS
-
-	// Check if the service is available
+	// Vérifie si le service est disponible et accessible
 	function check_server()
 	{
-		// Respond with status OK to indicate server is available
+		// Prépare et envoie une réponse avec le statut OK pour indiquer que le serveur est opérationnel
 		$success = array('status' => "OK");
 		$this->response(json_encode($success), 200);
 	}
 
-	// Get the configuration of the API and some parameters
+	// Récupère la configuration de l'API et ses paramètres principaux
 	protected function get_config()
 	{
+		// Vérifie le code de sécurité avant d'accéder à la configuration
 		$this->check_code();
 
-		// Prepare configuration data to send
+		// Prépare un tableau contenant les informations de configuration
 		$tableau = array('status' => 'OK');
-		$tableau["API_VERSION"] = $this->cfg->API_VERSION;
-		$tableau["POSTERS_DIRECTORY"] = $this->cfg->POSTERS_DIRECTORY;
-		$tableau["DB_TABLE"] = $this->cfg->DB_TABLE;
-		$tableau["PHP_VERSION"] = PHP_VERSION;
-		// Send the configuration data as JSON response
+		$tableau["API_VERSION"] = $this->cfg->API_VERSION;        // Version actuelle de l'API
+		$tableau["POSTERS_DIRECTORY"] = $this->cfg->POSTERS_DIRECTORY;  // Répertoire de stockage des affiches
+		$tableau["DB_TABLE"] = $this->cfg->DB_TABLE;             // Nom de la table dans la base de données
+		$tableau["PHP_VERSION"] = PHP_VERSION;                    // Version de PHP utilisée
+		// Envoie les données de configuration au format JSON avec un code de succès
 		$this->response(json_encode($tableau), 200);
 	}
 
-	// Create the poster directory if it does not exist
+	// Crée le répertoire pour stocker les affiches des films s'il n'existe pas déjà
 	function create_poster_directory()
 	{
+		// Vérifie le code de sécurité avant de créer le répertoire
 		$this->check_code();
 
 		$result = false;
 		$repertoire_affiches = '../' . $this->cfg->POSTERS_DIRECTORY;
 		$forceChmod = $this->_request['forceCHMOD'];
 
-		// Check if the directory exists
+		// Vérifie si le répertoire existe déjà
 		if (!is_dir($repertoire_affiches)) {
-			// Attempt to create the directory
+			// Tente de créer le répertoire des affiches
 			$result = mkdir($repertoire_affiches);
 			if (!$result) {
-				// Respond with error if creation fails
+				// En cas d'échec de création, renvoie une erreur avec le code 424
 				$error = array('error_code' => '201');
 				$this->response(json_encode($error), 424);
 			}
 		}
 
-		// If forceCHMOD is set to 'OUI', change permissions to 0777
+		// Si l'option forceCHMOD est définie sur 'OUI', modifie les permissions du répertoire
 		if ($forceChmod == 'OUI') {
 			chmod($repertoire_affiches, 0777);
-			// Respond with success and message about forced chmod
+			// Renvoie un message de succès indiquant que les permissions ont été modifiées
 			$success = array('status' => 'OK', 'message' => 'CHMOD forcé');
 			$this->response(json_encode($success), 200);
 		}
 
-		// Respond with success status
+		// Renvoie une réponse de succès si tout s'est bien passé
 		$success = array('status' => 'OK');
 		$this->response(json_encode($success), 200);
 	}
 
-	// Create the table in the database depending on DB type
+	// Crée la table dans la base de données en fonction du type de base de données configuré
 	private function create_table()
 	{
+		// Vérifie le code de sécurité avant de créer la table
 		$this->check_code();
 
-		// Call the appropriate method based on database type
+		// Sélectionne la méthode appropriée en fonction du type de base de données configuré
 		if ($this->cfg->DB_TYPE == 'sqlite') {
-			$this->create_table_sqlite();
+			$this->create_table_sqlite();    // Création pour SQLite
 		} else {
-			$this->create_table_mysql();
+			$this->create_table_mysql();     // Création pour MySQL
 		}
 	}
-
-	// Return ID/Update date from the database
+	// Récupère la liste des films avec leurs IDs et dates de mise à jour depuis la base de données
 	private function get_movie_list()
 	{
+		// Vérifie le code de sécurité avant d'exécuter la requête
 		$this->check_code();
-		// Initialize response array with status OK
+
+		// Initialise un tableau de réponse avec le statut OK
 		$tableau = array('status' => 'OK');
-		// Query database for ID and update date
+
+		// Exécute une requête SQL pour récupérer l'ID et la date/heure de mise à jour de chaque film
 		$res = $this->db->query("SELECT ID, DateHeureMAJ FROM " . $this->cfg->DB_TABLE);
-		// Populate response array with ID as key and update date as value
+
+		// Parcourt les résultats et remplit le tableau avec l'ID comme clé et la date de mise à jour comme valeur
 		foreach ($res as $row) {
 			$tableau[$row['ID']] = $row['DateHeureMAJ'];
 		}
-		// Send JSON response with the data
+
+		// Envoie la réponse au format JSON avec un code HTTP 200 (succès)
 		$this->response(json_encode($tableau), 200);
 	}
 
-	// Main process to add, update or remove records based on ACTION parameter
+	// Fonction principale pour ajouter, mettre à jour ou supprimer des enregistrements de films
 	private function publish()
 	{
+		// Vérifie le code de sécurité avant toute opération
 		$this->check_code();
 
-		// If ForceUpdate is set, clear the poster directory
+		// Si l'option ForceUpdate est activée, vide le répertoire des affiches
 		if (!empty($this->_request['ForceUpdate'])) {
 			$this->empty_poster_directory();
 		}
 
-		// Determine action to perform
+		// Détermine l'action à effectuer en fonction du paramètre ACTION reçu
 		switch ($this->_request['ACTION'] ?? '') {
 			case 'ADD':
-				// Add a new record
+				// Ajoute un nouvel enregistrement dans la base de données
 				$this->add_record();
 				break;
 			case 'UPDATE':
-				// Delete existing record then add updated record
+				// Pour une mise à jour : supprime d'abord l'ancien enregistrement puis ajoute le nouveau
 				$this->del_record();
 				$this->add_record();
 				break;
 			case 'DELETE':
-				// Delete the specified record
+				// Supprime l'enregistrement spécifié de la base de données
 				$this->del_record();
 				break;
 		}
 
-		// Prepare response with action details
+		// Prépare un tableau de réponse contenant les détails de l'action effectuée
 		$tableau = [
-			"action" => $this->_request['ACTION'] ?? null,
-			"TitreVF" => $this->_request['TitreVF'] ?? null,
-			"ID" => $this->_request['ID'] ?? null,
+			"action" => $this->_request['ACTION'] ?? null,    // Type d'action réalisée
+			"TitreVF" => $this->_request['TitreVF'] ?? null, // Titre du film en version française
+			"ID" => $this->_request['ID'] ?? null,           // Identifiant du film
 		];
-		// Send JSON response confirming the action
+
+		// Envoie la réponse au format JSON avec un code HTTP 200 (succès)
 		$this->response(json_encode($tableau), 200);
 	}
 
-	// MAIN PROCESS
+	// PROCESSUS PRINCIPAL
 
 	public function processApi()
 	{
-		// Retrieve the requested API function from the request parameters
+		// Récupère la fonction API demandée à partir des paramètres de la requête
 		$rquest = $_REQUEST['rquest'] ?? null;
 
 		if ($rquest !== null) {
-			// Clean and format the requested function name
+			// Nettoie et formate le nom de la fonction demandée :
+			// - strtolower : convertit en minuscules
+			// - trim : supprime les espaces avant et après
+			// - str_replace : supprime les caractères "/"
 			$func = strtolower(trim(str_replace("/", "", $rquest)));
 		} else {
-			// Respond with error if no request specified
+			// Répond avec une erreur 400 si aucune requête n'est spécifiée
 			$this->response('Invalid request', 400);
 			return;
 		}
 
-		// Check if the requested function is a valid service
+		// Vérifie si la fonction demandée fait partie des services autorisés
+		// définis dans le tableau $this->services
 		if (in_array($func, $this->services)) {
-			// Call the requested function
+			// Appelle dynamiquement la fonction demandée si elle existe
 			$this->$func();
 		} else {
-			// Respond with 404 if function not found
+			// Répond avec une erreur 404 si la fonction n'est pas trouvée
+			// dans la liste des services disponibles
 			$this->response('', 404);
 		}
 	}
 }
 
+// Crée une nouvelle instance de la classe API pour gérer les requêtes
 $api = new API();
-// Start processing the API request
+
+// Démarre le traitement de la requête API en appelant la méthode processApi()
+// Cette méthode va analyser la requête, identifier l'action demandée et exécuter
+// la fonction correspondante parmi les services disponibles
 $api->processApi();
 
+// Vide et envoie le contenu du tampon de sortie au client
+// Cela permet de s'assurer que toutes les données sont bien transmises
+// et que la mémoire tampon est correctement libérée
 ob_end_flush();
 ?>
